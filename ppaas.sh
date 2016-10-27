@@ -22,7 +22,7 @@ INTERACTIVELOG=true
 
 # Configuration End
 
-VERSION="1.0.0"
+VERSION="1.0.1"
 
 # Prints help
 print_help() {
@@ -256,15 +256,24 @@ json_sh() {
     fi
 }
 
+# Check Cloudflare API availablility
+check_cfapi_availability() {
+    if curl -s -X GET "https://api.cloudflare.com/client/v4/ips" | grep "success\":true" >/dev/null 2>&1; then
+        log "INFO: Cloudflare API v4 reachable."
+    else
+        log "ERROR: Cloudflare API v4 unreachable. Aborting."
+    fi
+}
+
 # Fetch Probes and record entries
 fetch_probes() {
-    if curl -s -X GET "https://my.pingdom.com/probes/ipv4" | grep 200 >/dev/null 2>&1; then
+    if curl -s -I "https://my.pingdom.com/probes/ipv4" | grep "200 OK" >/dev/null 2>&1; then
         PINGDOMIPV4PROBES=( $(curl -s -X GET "https://my.pingdom.com/probes/ipv4") )
     else
         log "ERROR: Unable to reach https://my.pingdom.com/probes/ipv4!"
         exit 1
     fi
-    if curl -s -X GET "https://my.pingdom.com/probes/ipv6" | grep 200 >/dev/null 2>&1; then
+    if curl -s -I "https://my.pingdom.com/probes/ipv6" | grep "200 OK" >/dev/null 2>&1; then
         PINGDOMIPV6PROBES=( $(curl -s -X GET "https://my.pingdom.com/probes/ipv6") )
     else
         log "ERROR: Unable to reach https://my.pingdom.com/probes/ipv6!"
@@ -273,7 +282,7 @@ fetch_probes() {
 }
 
 update_records() {
-    # TODO: Add Logging and error handling!
+    # TODO: Add more logging and error handling!
     # Now we will remove all fetched RR's (A and AAAA) if there are any
     if [ "${ALLRRS}" == '' ]; then
         log "INFO: No RR's found. We will continue adding them."
@@ -293,19 +302,19 @@ update_records() {
     for APROBE in "${PINGDOMIPV4PROBES[@]}"; do
         AUPDATE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${CFZONEID}/dns_records" -H "X-Auth-Email: ${CFEMAIL}" -H "X-Auth-Key: ${CFAPIKEY}" -H "Content-Type: application/json" --data "{\"type\":\"A\",\"name\":\"${CFPPDOMAIN}\",\"content\":\"${APROBE}\",\"ttl\":${RRTTL}}")
         if [[ "${AUPDATE}" == *"\"success\":false"* ]]; then
-            log "ERROR: Adding ${AUPDATE} failed. Stopping."
+            log "ERROR: Adding ${APROBE} failed. Stopping."
             exit 1
         else
-            log "INFO: Adding ${AUPDATE} succeeded."
+            log "INFO: Adding ${APROBE} succeeded."
         fi
     done
     for QAPROBE in "${PINGDOMIPV6PROBES[@]}"; do
         QAUPDATE=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${CFZONEID}/dns_records" -H "X-Auth-Email: ${CFEMAIL}" -H "X-Auth-Key: ${CFAPIKEY}" -H "Content-Type: application/json" --data "{\"type\":\"AAAA\",\"name\":\"${CFPPDOMAIN}\",\"content\":\"${QAPROBE}\",\"ttl\":${RRTTL}}")
         if [[ "${QAUPDATE}" == *"\"success\":false"* ]]; then
-            log "ERROR: Adding ${QAUPDATE} failed. Stopping."
+            log "ERROR: Adding ${QAPROBE} failed. Stopping."
             exit 1
         else
-            log "INFO: Adding ${QAUPDATE} succeeded."
+            log "INFO: Adding ${QAPROBE} succeeded."
         fi
     done
 }
@@ -315,6 +324,7 @@ case "$1" in
         print_help
         exit 0;;
     *)
+        check_cfapi_availability
         CFZONEID=$(curl -s -X GET "https://api.cloudflare.com/client/v4/zones?name=${CFZONE}" -H "X-Auth-Email: ${CFEMAIL}" -H "X-Auth-Key: ${CFAPIKEY}" -H "Content-Type: application/json" | json_sh -b | grep '0,"id"' | cut -d'"' -f6 )
         ALLRRS=( $(curl -s -X GET "https://api.cloudflare.com/client/v4/zones/${CFZONEID}/dns_records?name=${CFPPDOMAIN}&page=1&per_page=1000&order=type&direction=desc&match=all" -H "X-Auth-Email: ${CFEMAIL}" -H "X-Auth-Key: ${CFAPIKEY}" -H "Content-Type: application/json" | json_sh -b | grep "\"id" | cut -d'"' -f6) )
         fetch_probes
