@@ -1,23 +1,28 @@
 # Pingdom Probes as a Service (PPaaS)
-This little script will automate the hassle of adding or removing single pingdom probes manually from your IP-Whitelisting or Firewall.
-It will do this by getting all IPv4 and IPv6 Probes and add them to a single Subdomain of your own domain. It will add all probes as separate A/AAAA
-Records for that subdomain so by resolving the subdomain you get all probes.
+This tool will automate the hassle of adding or removing single pingdom probes manually from your IP-Whitelisting.
+It will do this by getting all IPv4 and IPv6 Probes and add them to a single Subdomain of your own domain. The probes are being added as separate A/AAAA
+Records for that subdomain instead of a single subdomain per probe.
 
 ### Example
-In the Sophos UTM you can either do it manually and add single DNS Hosts or Hosts with IP's manually or you can now add a single DNS Group which
+In the Sophos UTM* you can either do it manually by adding single Hosts with those Probe-IP's manually or you can now add a single DNS Group which
 points to your new subdomain. The UTM will automatically resolve to all A/AAAA Records (AAAA only when IPv6 is activated) and updates the Filterrules
-which uses this DNS Group, so an update to the listed RR's on the Subdomain results in an automatically updated Whitelisting.
+which uses this DNS Group, so an update of the Resource-Records on the Subdomain results in an automatically updated Whitelisting.
+
+> *By default the UTM will use the subdomains TTL (default 300s) before re-resolving all RR's and updating the Rules in the Firewall. In the latest version
+of the UTM - 9.407 and before there is a bug which does'nt delete resolved IP's from the DNS Group when they have been deleted from the subdomain but will only add
+new IP's instead. The Bug is filed as NUTM-4601 for UTM's pre 9.407 and NUTM-5697 for 9.407 where the bug still exists. You can use PPaaS already with those versions.
+It will work correctly but since it does'nt delete old IP's from the DNS Group, your whitelisting is a bit more permissive than it should until the bug is fixed.
 
 ## How to use
 Just download the ppaas.sh script and make it executeable with `chmod +x ppaas.sh`. Then configure the parameters within that script at the top.
 
-* **CFEMAIL** means your login e-mail address for your Cloudflare account
+* **CFEMAIL** is your login e-mail address for your Cloudflare account
 * **CFAPIKEY** is your *Global API Key* which you can find in [your Account](https://www.cloudflare.com/a/account/my-account) by clicking *View API Key*
-* **CFZONE** is your Domain where your Pingdom Probe Subdomain will be created like `example.com`
-* **CFPPDOMAIN** is the desired Pingdom Probes Subdomain like `pingdomprobes.example.com`
+* **CFZONE** is your Domain/Zone where your Pingdom Probe Subdomain will be created (ex. `example.com`)
+* **CFPPDOMAIN** is the desired Pingdom Probes Subdomain (ex. `pingdomprobes.example.com`)
 * **RRTTL** is the TTL (Time-to-live) of the created A/AAAA Resource Records (this is the default for Pingdoms Probe Server DNS Entries)
 * **DOLOG** enables the logging of what PPaaS does. By default it logs into syslog using `logger` with the programname `ppaas`
-* **INTERACTIVELOG** outputs all log also to `STDOUT` besides syslog, so you can see what `ppass` does.
+* **INTERACTIVELOG** outputs all log also to `STDOUT` besides syslog, so you can see what `ppass` does (default true).
 
 ### Embedded 3rd party tools
 While PPaaS needs to process JSON Output coming from the Cloudflare API, [JSON.sh](https://github.com/dominictarr/JSON.sh) has been embedded into ppaas.sh, so it does not rely on external 3rd party tools and can run everywhere where a bash is available (Linux, macOS, *BSD, maybe Windows with cygwin or WSL)
@@ -32,7 +37,7 @@ I even appreciate ports to Go, Ruby or other Languages.
 2. Fork the repository on Github and make your changes on your own **development** branch (just branch off of master).
 3. Send a pull request (with the **master** branch as the target).
 
-## Changelog
+### Changelog
 See [CHANGELOG.md](CHANGELOG.md)
 
 ### License
