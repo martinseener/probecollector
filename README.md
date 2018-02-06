@@ -18,24 +18,24 @@ It will work correctly but since it only deletes old IPs from the DNS Group afte
 
 ## How to use
 
-Just download the ppaas.sh script and make it executeable with `chmod +x ppaas.sh`. Then configure the parameters within the main.conf.sh script in the config folder.
+The initial v1.x release was built as a shell script and only supported deleting all records and readding the updated version afterwards. As this works, it's not quite professional and uses more API calls than necessary. Also adding a TXT record for checking the last domain update was missing, so i have rewritten PPaaS completely in Python and added a lot functions. The Bash-Version is now considered deprecated but can be still used from the `examples` subfolder. Please check an older version of this `README.md` for Bash-Version instructions.
 
-* **CFEMAIL** is your login e-mail address for your Cloudflare account
-* **CFAPIKEY** is your *Global API Key* which you can find in [your Account](https://www.cloudflare.com/a/account/my-account) by clicking *View API Key*
-* **CFZONE** is your Domain/Zone where your Pingdom Probe Subdomain will be created (ex. `example.com`)
-* **CFPPDOMAIN** is the desired Pingdom Probes Subdomain (ex. `pingdomprobes.example.com`)
-* **RRTTL** is the TTL (Time-to-live) of the created A/AAAA Resource Records (this is the default for Pingdoms Probe Server DNS Entries)
-* **DOLOG** enables the logging of what PPaaS does. By default it logs into syslog using `logger` with the programname `ppaas`
-* **INTERACTIVELOG** outputs all log also to `STDOUT` besides syslog, so you can see what `ppass` does (default true).
-* **STATUSFILE** puts the unix timestamp into the statusfile upon a successful run, so it can be checked externally (e.g. with Nagios)
+For v2.x and onwards, clone this repository, install the python modules and add the Cloudflare credentials to a config file. Then run it.
 
-### Required 3rd party tools
+### Installation
 
-While PPaaS needs to process JSON Output coming from the Cloudflare API, [JSON.sh](https://github.com/dominictarr/JSON.sh) has been added, so it does not rely on external 3rd party tools and can run everywhere where a bash is available (Linux, macOS, *BSD, maybe Windows with cygwin or WSL)
+    git clone https://github.com/martinseener/ppaas.git
+    cd ppaas/
+    pip install -r requirements.txt
+    python ppaas.py
+
+### Authentication
+
+`ppaas.py` uses the [python-cloudflare](https://github.com/cloudflare/python-cloudflare) package and so it uses it's methods to authenticate at Cloudflare. Please read [here](https://github.com/cloudflare/python-cloudflare#providing-cloudflare-username-and-api-key) which methods exist for authenticating. PPaaS has been developed and tested with a local credential file in the same folder as the `ppaas.py`, so for example `./.cloudflare.cfg` (That's why this file is also in `.gitignore`). But you can choose your preferred method. All of them should work and if not, feel free to open an issue.
 
 ## Contributing and License
 
-This script has been quickly written to just do what it does. It fetches all probes available, erases all current Resource Records from the owned subdomain and readds all probes again. This is not very intelligent but it works just fine. I thought about checking which A/AAAA Records are already there and just adding/removing those who are/are not in the Probes list. If you want to help me out making this tool better, you're very welcome.
+If you want to help me out making this tool better, you're very welcome.
 
 I even appreciate ports to Go, Ruby or other Languages.
 

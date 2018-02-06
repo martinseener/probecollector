@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.0.0] - 2018-02-06
+- PPaaS has been completely rewritten in Python (2.7) starting with v2.x branch
+- Updating a domain now does not purge and rewrites all probes but it intelligently deleting/writing only changed probes from Pingdom's lists
+- Added functionality to add/update a TXT record with the current UNIX-timestamp when the last PPaaS updated the domain
+- Added functionality to completely purge a probes domain
+- Added Nagios-compatible check if a domain has been updated recently using the added TXT record functionality
+- Bash-Version (v1.x branch) has been archived/deprecated in favor of v2.x
+
 ## [1.1.0] - 2017-01-27
 - Made the dependencies (json_sh) and configuration modular
 - Added writing a status file upon last successful execution
