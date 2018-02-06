@@ -2,10 +2,13 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.0.1] - 2018-02-06
+- PPaaS has been renamed to Probe Collector to prepare support for multiple probe-based monitoring services
+
 ## [2.0.0] - 2018-02-06
 - PPaaS has been completely rewritten in Python (2.7) starting with v2.x branch
 - Updating a domain now does not purge and rewrites all probes but it intelligently deleting/writing only changed probes from Pingdom's lists
-- Added functionality to add/update a TXT record with the current UNIX-timestamp when the last PPaaS updated the domain
+- Added functionality to add/update a TXT record with the current UNIX-timestamp when the last PPaaS run updated the domain
 - Added functionality to completely purge a probes domain
 - Added Nagios-compatible check if a domain has been updated recently using the added TXT record functionality
 - Bash-Version (v1.x branch) has been archived/deprecated in favor of v2.x

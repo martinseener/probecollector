@@ -1,9 +1,9 @@
-# Pingdom Probes as a Service (PPaaS)
+# Probe Collector
 
-This tool will automate the hassle of adding or removing single pingdom probes manually from your IP-Whitelisting.
+This tool will automate the hassle of adding or removing single monitoring probes manually from your IP-Whitelisting.
 It will do this by getting all IPv4 and IPv6 Probes and add them to a single Subdomain of your own domain. The probes are being added as separate A/AAAA Records for that subdomain instead of a single subdomain per probe.
 
-This tool currently only supports Cloudflare as the DNS provider.
+This tool currently only supports Cloudflare as the DNS provider and Pingdom as the source of the monitoring probes.
 
 ### Example
 
@@ -18,20 +18,20 @@ It will work correctly but since it only deletes old IPs from the DNS Group afte
 
 ## How to use
 
-The initial v1.x release was built as a shell script and only supported deleting all records and readding the updated version afterwards. As this works, it's not quite professional and uses more API calls than necessary. Also adding a TXT record for checking the last domain update was missing, so i have rewritten PPaaS completely in Python and added a lot functions. The Bash-Version is now considered deprecated but can be still used from the `examples` subfolder. Please check an older version of this `README.md` for Bash-Version instructions.
+The initial v1.x release was built as a shell script and only supported deleting all records and readding the updated version afterwards. As this works, it's not quite professional and uses more API calls than necessary. Also adding a TXT record for checking the last domain update was missing, so i have rewritten Probe Collector completely in Python and added a lot functions. The Bash-Version is now considered deprecated but can be still used from the `examples` subfolder. Please check an older version of this `README.md` for Bash-Version instructions. It has formerly been called PPaaS or Pingdom Probes as a Service.
 
 For v2.x and onwards, clone this repository, install the python modules and add the Cloudflare credentials to a config file. Then run it.
 
 ### Installation
 
-    git clone https://github.com/martinseener/ppaas.git
-    cd ppaas/
+    git clone https://github.com/martinseener/probecollector.git
+    cd probecollector/
     pip install -r requirements.txt
-    python ppaas.py
+    python probecollector.py
 
 ### Authentication
 
-`ppaas.py` uses the [python-cloudflare](https://github.com/cloudflare/python-cloudflare) package and so it uses it's methods to authenticate at Cloudflare. Please read [here](https://github.com/cloudflare/python-cloudflare#providing-cloudflare-username-and-api-key) which methods exist for authenticating. PPaaS has been developed and tested with a local credential file in the same folder as the `ppaas.py`, so for example `./.cloudflare.cfg` (That's why this file is also in `.gitignore`). But you can choose your preferred method. All of them should work and if not, feel free to open an issue.
+`probecollector.py` uses the [python-cloudflare](https://github.com/cloudflare/python-cloudflare) package and so it uses it's methods to authenticate at Cloudflare. Please read [here](https://github.com/cloudflare/python-cloudflare#providing-cloudflare-username-and-api-key) which methods exist for authenticating. Probe Collector has been developed and tested with a local credential file in the same folder as the `probecollector.py`, so for example `./.cloudflare.cfg` (That's why this file is also in `.gitignore`). But you can choose your preferred method. All of them should work and if not, feel free to open an issue.
 
 ## Contributing and License
 
@@ -51,4 +51,4 @@ See [CHANGELOG.md](CHANGELOG.md)
 
 ### License
 
-PPaaS is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
+Probe Collector is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
