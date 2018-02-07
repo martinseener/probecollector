@@ -2,8 +2,8 @@
 # # -*- coding: utf-8 -*-
 
 """
-Pingdomes Probes as a Service provides easy management of
-Pingdom Probes (A/AAAA) on your Cloudflare Domain as a single
+Probe Collector provides easy management of
+Monitoring Probes (A/AAAA) on your Cloudflare Domain as a single
 DNS Entry for easier usage for Whitelisting-purposes.
 It also works as a Check-Tool with Nagios-compatible output.
 """
@@ -21,7 +21,7 @@ import CloudFlare
 __author__ = 'Martin Seener'
 __copyright__ = 'Copyright 2018, Martin Seener'
 __license__ = 'MIT'
-__version__ = '2.0.0'
+__version__ = '2.0.1'
 __maintainer__ = 'Martin Seener'
 __email__ = 'martin@sysorchestra.com'
 __status__ = 'Production'
@@ -29,7 +29,7 @@ __status__ = 'Production'
 
 def version():
     """Returns the current version, copyright and license"""
-    return 'PPaaS ' + __version__ + ' - ' + __copyright__ + \
+    return 'Probe Collector ' + __version__ + ' - ' + __copyright__ + \
         ' - ' + 'License: ' + __license__
 
 
@@ -59,7 +59,7 @@ def pingdom_fetch_probes(proto):
     return iplist, False
 
 
-def cf_get_zone_id(cf, domain):
+def cloudflare_get_zone_id(cf, domain):
     """Queries the Cloudflare Zone-ID from the given domain"""
     zone_name = domain.split('.', 1)[1]
     try:
@@ -86,7 +86,7 @@ def cf_get_zone_id(cf, domain):
     return zones[0]['id'], False
 
 
-def cf_fetch_rr(cf, domain, zone_id, type):
+def cloudflare_fetch_resource_record(cf, domain, zone_id, type):
     """Fetches all DNS Resource Records from the Cloudflare Domain"""
     page_number = 0
     cf_records = []
@@ -116,7 +116,7 @@ def cf_fetch_rr(cf, domain, zone_id, type):
     return cf_records, False
 
 
-def cf_add_txt_rr(cf, domain, zone_id):
+def cloudflare_add_txt_resource_record(cf, domain, zone_id):
     """
     Adds a TXT Record with the current timestamp,
     so one can check if the update was running
@@ -124,7 +124,7 @@ def cf_add_txt_rr(cf, domain, zone_id):
     current_timestamp = int(time.time())
 
     # Get the rr_id for the TXT record first, if there is one
-    resp, e = cf_fetch_rr(cf, domain, zone_id, 'TXT')
+    resp, e = cloudflare_fetch_resource_record(cf, domain, zone_id, 'TXT')
     if e is False:
         cf_txt_records = resp
     else:
@@ -165,7 +165,7 @@ def cf_add_txt_rr(cf, domain, zone_id):
     return True
 
 
-def cf_del_rr(cf, zone_id, rr):
+def cloudflare_delete_resource_record(cf, zone_id, rr):
     """Deletes a DNS Resource Record from Cloudflare"""
     try:
         cf.zones.dns_records.delete(zone_id, rr)
@@ -179,7 +179,7 @@ def cf_del_rr(cf, zone_id, rr):
     return True
 
 
-def cf_add_rr(cf, zone_id, domain, type, content, ttl=300, proxied=False):
+def cloudflare_add_resource_record(cf, zone_id, domain, type, content, ttl=300, proxied=False):
     """Adds a DNS Resource Record to Cloudflare"""
     new_rr = {
         'name': domain.split('.', 1)[0],
@@ -243,11 +243,11 @@ def check_domain(domain, warning, critical):
 
 def update_domain(cf, domain):
     """
-    Updates a domain and adds all Pingdom Probes there
+    Updates a domain and adds all monitoring probes there
     if they don't exist or updates it's status by comparing
-    the Cloudflare list with the Pingdom probes list
+    the Cloudflare list with the monitoring probes list
     """
-    resp, e = cf_get_zone_id(cf, domain)
+    resp, e = cloudflare_get_zone_id(cf, domain)
     if e is False:
         zone_id = resp
     else:
@@ -255,13 +255,13 @@ def update_domain(cf, domain):
         sys.exit(1)
 
     # Get all current IPv4/6 RR's
-    resp, e = cf_fetch_rr(cf, domain, zone_id, 'A')
+    resp, e = cloudflare_fetch_resource_record(cf, domain, zone_id, 'A')
     if e is False:
         cf_ipv4_records = resp
     else:
         print resp
         sys.exit(1)
-    resp, e = cf_fetch_rr(cf, domain, zone_id, 'AAAA')
+    resp, e = cloudflare_fetch_resource_record(cf, domain, zone_id, 'AAAA')
     if e is False:
         cf_ipv6_records = resp
     else:
@@ -282,11 +282,15 @@ def update_domain(cf, domain):
         print resp
         sys.exit(1)
 
-    # Remove all IPv4/IPv6 Entries that are not in the Pingdom Probes list
+    # Remove all IPv4/IPv6 Entries that are not in the monitoring probes list
     cf_ipv4_delcount = 0
     for cf_ipv4_dict in cf_ipv4_records:
         if cf_ipv4_dict['content'] not in pingdom_ipv4_probes:
-            resp = cf_del_rr(cf, zone_id, cf_ipv4_dict['id'])
+            resp = cloudflare_delete_resource_record(
+                cf,
+                zone_id,
+                cf_ipv4_dict['id']
+            )
             if resp is not True:
                 print resp
                 sys.exit(1)
@@ -295,18 +299,25 @@ def update_domain(cf, domain):
     cf_ipv6_delcount = 0
     for cf_ipv6_dict in cf_ipv6_records:
         if cf_ipv6_dict['content'] not in pingdom_ipv6_probes:
-            resp = cf_del_rr(cf, zone_id, cf_ipv6_dict['id'])
+            resp = cloudflare_delete_resource_record(
+                cf,
+                zone_id,
+                cf_ipv6_dict['id']
+            )
             if resp is not True:
                 print resp
                 sys.exit(1)
             cf_ipv6_delcount += 1
 
-    # Add all IPv4/6 entries from Pingdom that are missing in Cloudflare's list
+    """
+    Add all IPv4/6 entries from the monitoring service
+    that are missing in Cloudflare's list
+    """
     cf_ipv4_list = map(lambda x: x['content'], cf_ipv4_records)
     cf_ipv4_addcount = 0
     for pingdom_ipv4 in pingdom_ipv4_probes:
         if pingdom_ipv4 not in cf_ipv4_list:
-            resp = cf_add_rr(
+            resp = cloudflare_add_resource_record(
                 cf=cf,
                 zone_id=zone_id,
                 type='A',
@@ -322,7 +333,7 @@ def update_domain(cf, domain):
     cf_ipv6_addcount = 0
     for pingdom_ipv6 in pingdom_ipv6_probes:
         if pingdom_ipv6 not in cf_ipv6_list:
-            resp = cf_add_rr(
+            resp = cloudflare_add_resource_record(
                 cf=cf,
                 zone_id=zone_id,
                 type='AAAA',
@@ -335,7 +346,7 @@ def update_domain(cf, domain):
             cf_ipv6_addcount += 1
 
     # Renew TXT record on each run, even if nothing changed.
-    cf_txt_resp = cf_add_txt_rr(cf, domain, zone_id)
+    cf_txt_resp = cloudflare_add_txt_resource_record(cf, domain, zone_id)
     if cf_txt_resp is True:
         print 'Deleted IPv4/6: {}/{}. Added IPv4/6: {}/{}. TXT Renewal: OK'.\
             format(
@@ -358,9 +369,9 @@ def update_domain(cf, domain):
 def purge_domain(cf, domain):
     """
     Completely purges a domain so there are
-    no traces of any pingdom probes or TXT records anymore
+    no traces of any monitoring probes or TXT records anymore
     """
-    resp, e = cf_get_zone_id(cf, domain)
+    resp, e = cloudflare_get_zone_id(cf, domain)
     if e is False:
         zone_id = resp
     else:
@@ -368,7 +379,7 @@ def purge_domain(cf, domain):
         sys.exit(1)
 
     # Get all current RR's
-    resp, e = cf_fetch_rr(cf, domain, zone_id, None)
+    resp, e = cloudflare_fetch_resource_record(cf, domain, zone_id, None)
     if e is False:
         cf_domain_records = resp
     else:
@@ -378,7 +389,11 @@ def purge_domain(cf, domain):
     # Remove all Records from that domain (effectly the domain itself)
     cf_domain_delcount = 0
     for cf_domain_dict in cf_domain_records:
-        resp = cf_del_rr(cf, zone_id, cf_domain_dict['id'])
+        resp = cloudflare_delete_resource_record(
+            cf,
+            zone_id,
+            cf_domain_dict['id']
+        )
         if resp is not True:
             print resp
             sys.exit(1)
@@ -394,11 +409,11 @@ def purge_domain(cf, domain):
 def main(args):
     parser = argparse.ArgumentParser(
         description='\
-        PPaaS (Pingdom Probes as a Service) gets all IPv4 and\
-        IPv6 Probe Server IP\'s from Pingdom and creates a single\
-        DNS Name with multiple A/AAAA-RR\'s out of them, so you can use\
-        just a single DNS Name for whitelisting purposes without ever\
-        have to manually add/remove them anymore. This is helpful\
+        Probe Collector gets all IPv4 and\
+        IPv6 Probe Server IP\'s from your Monitoring Service and creates\
+        a single DNS Name with multiple A/AAAA-RR\'s out of them, so\
+        you can use just a single DNS Name for whitelisting purposes\
+        without ever have to manually add/remove them anymore. This is helpful\
         for example when using IP-Whitelisting with the Sophos UTM.\
         You now have to use a DNS Group and you\'re done.',
         version=version()
@@ -409,22 +424,22 @@ def main(args):
         '-q',
         '--query-domain',
         dest='check_domain',
-        help='Enter a valid FQDN like "pingdomprobes.sysorchestra.com" to check last update\
-        of the domain. The output is Nagios-compatible!',
+        help='Enter a valid FQDN like "monitoringprobes.sysorchestra.com" to check\
+        last update of the domain. The output is Nagios-compatible!',
     )
     exclusive_group.add_argument(
         '-u',
         '--update-domain',
         dest='update_domain',
-        help='Enter a valid FQDN like "pingdomprobes.sysorchestra.com" to update\
-        the Pingdom probes on that domain.',
+        help='Enter a valid FQDN like "monitoringprobes.sysorchestra.com" to update\
+        the Monitoring probes on that domain.',
     )
     exclusive_group.add_argument(
         '-p',
         '--purge-domain',
         dest='purge_domain',
-        help='Enter a valid FQDN like "pingdomprobes.sysorchestra.com" to purge\
-        the Pingdom probes on that domain as well as the TXT record.',
+        help='Enter a valid FQDN like "monitoringprobes.sysorchestra.com" to purge\
+        the Monitoring probes on that domain as well as the TXT record.',
     )
 
     parser.add_argument(
