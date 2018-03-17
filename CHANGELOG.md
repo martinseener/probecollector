@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.1.0] - 2018-03-17
+- Made Probe Collector compatible with Python 2 and 3. Tested with Python 2.7.10 and 3.6.4
+- Added support for UptimeRobot (Pingdom remains default for backwards-compatibility)
+
 ## [2.0.1] - 2018-02-06
 - PPaaS has been renamed to Probe Collector to prepare support for multiple probe-based monitoring services
 

@@ -8,29 +8,30 @@ DNS Entry for easier usage for Whitelisting-purposes.
 It also works as a Check-Tool with Nagios-compatible output.
 """
 
-
+from __future__ import print_function
+from builtins import str
 import sys
-import argparse
-import requests
-import subprocess
-import time
-import re
-import CloudFlare
+
+try:
+    import argparse
+    import requests
+    import subprocess
+    import time
+    import re
+    import CloudFlare
+
+except ImportError as e:
+    print("Missing python module: {}".format(e.message))
+    sys.exit(255)
 
 
 __author__ = 'Martin Seener'
 __copyright__ = 'Copyright 2018, Martin Seener'
 __license__ = 'MIT'
-__version__ = '2.0.1'
+__version__ = '2.1.0'
 __maintainer__ = 'Martin Seener'
 __email__ = 'martin@sysorchestra.com'
 __status__ = 'Production'
-
-
-def version():
-    """Returns the current version, copyright and license"""
-    return 'Probe Collector ' + __version__ + ' - ' + __copyright__ + \
-        ' - ' + 'License: ' + __license__
 
 
 def validate_fqdn(fqdn):
@@ -45,17 +46,22 @@ def validate_fqdn(fqdn):
         return True
 
 
-def pingdom_fetch_probes(proto):
-    """Fetches all Pingdom probes from the given protocol"""
+def service_fetch_probes(service, proto):
+    """Fetches all service probes from the given protocol"""
+    if service == 'pingdom':
+        url = 'https://my.pingdom.com/probes/' + proto
+    elif service == 'uptimerobot':
+        url = 'https://uptimerobot.com/inc/files/ips/' + proto + '.txt'
+
     try:
-        resp = requests.get('https://my.pingdom.com/probes/' + proto)
+        resp = requests.get(url)
     except Exception as e:
-        return 'Failed to get {} probes from Pingdom with error: {}'.format(
-            proto,
-            e,
-        ), True
+        return 'Failed to get {} probes from ' + service
+        + ' with error: {}'.format(proto,
+                                   e,
+                                   ), True
     # Get back a list of IP's and filter out empty lines
-    iplist = filter(lambda x: x != '', resp.text.split("\n"))
+    iplist = [x for x in resp.text.split() if x != '']
     return iplist, False
 
 
@@ -128,7 +134,7 @@ def cloudflare_add_txt_resource_record(cf, domain, zone_id):
     if e is False:
         cf_txt_records = resp
     else:
-        print resp
+        print(resp)
         sys.exit(1)
     if len(cf_txt_records) >= 1:
         """
@@ -207,163 +213,171 @@ def check_domain(domain, warning, critical):
     current_timestamp = int(time.time())
     resp = subprocess.check_output(
         ['dig', 'TXT', domain, '+short']
-    ).rstrip("\n").strip('"')
+    ).decode().strip().strip('"')
     if isinstance(resp, str):
         try:
             resp = int(resp)
         except Exception:
-            print 'UNKNOWN - Domain does not provide a valid TXT record.'
+            print('UNKNOWN - Domain does not provide a valid TXT record.')
             sys.exit(3)
     if isinstance(warning, int) and isinstance(critical, int):
         if (current_timestamp - resp) >= critical:
-            print 'CRITICAL - Last update of {} was more than {}s ago!'.format(
+            print('CRITICAL - Last update of {} was more than {}s ago!'.format(
                 domain,
                 critical
-            )
+            ))
             sys.exit(2)
         elif (current_timestamp - resp) >= warning:
-            print 'WARNING - Last update of {} was more than {}s ago!'.format(
+            print('WARNING - Last update of {} was more than {}s ago!'.format(
                 domain,
                 warning
-            )
+            ))
             sys.exit(1)
         elif (current_timestamp - resp) < warning:
-            print 'OK - Last update of {} was less than {}s ago.'.format(
+            print('OK - Last update of {} was less than {}s ago.'.format(
                 domain,
                 warning
-            )
+            ))
             sys.exit()
         else:
-            print 'UNKNOWN - Unknown error occured!'
+            print('UNKNOWN - Unknown error occured!')
             sys.exit(3)
     else:
-        print 'UNKNOWN - warning or critical values are no integers!'
+        print('UNKNOWN - warning or critical values are no integers!')
         sys.exit(3)
 
 
-def update_domain(cf, domain):
+def update_domain(cf, domain, service):
     """
     Updates a domain and adds all monitoring probes there
     if they don't exist or updates it's status by comparing
     the Cloudflare list with the monitoring probes list
     """
-    resp, e = cloudflare_get_zone_id(cf, domain)
-    if e is False:
-        zone_id = resp
-    else:
-        print resp
+    service = service.lower()
+    if service not in ['pingdom', 'uptimerobot']:
+        print('The monitoring service you choose (' +
+              service +
+              ') is not valid.')
         sys.exit(1)
-
-    # Get all current IPv4/6 RR's
-    resp, e = cloudflare_fetch_resource_record(cf, domain, zone_id, 'A')
-    if e is False:
-        cf_ipv4_records = resp
     else:
-        print resp
-        sys.exit(1)
-    resp, e = cloudflare_fetch_resource_record(cf, domain, zone_id, 'AAAA')
-    if e is False:
-        cf_ipv6_records = resp
-    else:
-        print resp
-        sys.exit(1)
+        resp, e = cloudflare_get_zone_id(cf, domain)
+        if e is False:
+            zone_id = resp
+        else:
+            print(resp)
+            sys.exit(1)
 
-    # Fetch Pingdom Probes
-    resp, e = pingdom_fetch_probes('ipv4')
-    if e is False:
-        pingdom_ipv4_probes = resp
-    else:
-        print resp
-        sys.exit(1)
-    resp, e = pingdom_fetch_probes('ipv6')
-    if e is False:
-        pingdom_ipv6_probes = resp
-    else:
-        print resp
-        sys.exit(1)
+        # Get all current IPv4/6 RR's
+        resp, e = cloudflare_fetch_resource_record(cf, domain, zone_id, 'A')
+        if e is False:
+            cf_ipv4_records = resp
+        else:
+            print(resp)
+            sys.exit(1)
+        resp, e = cloudflare_fetch_resource_record(cf, domain, zone_id, 'AAAA')
+        if e is False:
+            cf_ipv6_records = resp
+        else:
+            print(resp)
+            sys.exit(1)
 
-    # Remove all IPv4/IPv6 Entries that are not in the monitoring probes list
-    cf_ipv4_delcount = 0
-    for cf_ipv4_dict in cf_ipv4_records:
-        if cf_ipv4_dict['content'] not in pingdom_ipv4_probes:
-            resp = cloudflare_delete_resource_record(
-                cf,
-                zone_id,
-                cf_ipv4_dict['id']
-            )
-            if resp is not True:
-                print resp
-                sys.exit(1)
-            cf_ipv4_delcount += 1
+        # Fetch Pingdom Probes
+        resp, e = service_fetch_probes(service, 'ipv4')
+        if e is False:
+            ipv4_probes = resp
+        else:
+            print(resp)
+            sys.exit(1)
+        resp, e = service_fetch_probes(service, 'ipv6')
+        if e is False:
+            ipv6_probes = resp
+        else:
+            print(resp)
+            sys.exit(1)
 
-    cf_ipv6_delcount = 0
-    for cf_ipv6_dict in cf_ipv6_records:
-        if cf_ipv6_dict['content'] not in pingdom_ipv6_probes:
-            resp = cloudflare_delete_resource_record(
-                cf,
-                zone_id,
-                cf_ipv6_dict['id']
-            )
-            if resp is not True:
-                print resp
-                sys.exit(1)
-            cf_ipv6_delcount += 1
+        """
+        Remove all IPv4/IPv6 Entries that are
+        not in the monitoring probes list
+        """
+        cf_ipv4_delcount = 0
+        for cf_ipv4_dict in cf_ipv4_records:
+            if cf_ipv4_dict['content'] not in ipv4_probes:
+                resp = cloudflare_delete_resource_record(
+                    cf,
+                    zone_id,
+                    cf_ipv4_dict['id']
+                )
+                if resp is not True:
+                    print(resp)
+                    sys.exit(1)
+                cf_ipv4_delcount += 1
 
-    """
-    Add all IPv4/6 entries from the monitoring service
-    that are missing in Cloudflare's list
-    """
-    cf_ipv4_list = map(lambda x: x['content'], cf_ipv4_records)
-    cf_ipv4_addcount = 0
-    for pingdom_ipv4 in pingdom_ipv4_probes:
-        if pingdom_ipv4 not in cf_ipv4_list:
-            resp = cloudflare_add_resource_record(
-                cf=cf,
-                zone_id=zone_id,
-                type='A',
-                domain=domain,
-                content=pingdom_ipv4,
-            )
-            if resp is not True:
-                print resp
-                sys.exit(1)
-            cf_ipv4_addcount += 1
+        cf_ipv6_delcount = 0
+        for cf_ipv6_dict in cf_ipv6_records:
+            if cf_ipv6_dict['content'] not in ipv6_probes:
+                resp = cloudflare_delete_resource_record(
+                    cf,
+                    zone_id,
+                    cf_ipv6_dict['id']
+                )
+                if resp is not True:
+                    print(resp)
+                    sys.exit(1)
+                cf_ipv6_delcount += 1
 
-    cf_ipv6_list = map(lambda x: x['content'], cf_ipv6_records)
-    cf_ipv6_addcount = 0
-    for pingdom_ipv6 in pingdom_ipv6_probes:
-        if pingdom_ipv6 not in cf_ipv6_list:
-            resp = cloudflare_add_resource_record(
-                cf=cf,
-                zone_id=zone_id,
-                type='AAAA',
-                domain=domain,
-                content=pingdom_ipv6,
-            )
-            if resp is not True:
-                print resp
-                sys.exit(1)
-            cf_ipv6_addcount += 1
+        """
+        Add all IPv4/6 entries from the monitoring service
+        that are missing in Cloudflare's list
+        """
+        cf_ipv4_list = [x['content'] for x in cf_ipv4_records]
+        cf_ipv4_addcount = 0
+        for ipv4_probe in ipv4_probes:
+            if ipv4_probe not in cf_ipv4_list:
+                resp = cloudflare_add_resource_record(
+                    cf=cf,
+                    zone_id=zone_id,
+                    type='A',
+                    domain=domain,
+                    content=ipv4_probe,
+                )
+                if resp is not True:
+                    print(resp)
+                    sys.exit(1)
+                cf_ipv4_addcount += 1
 
-    # Renew TXT record on each run, even if nothing changed.
-    cf_txt_resp = cloudflare_add_txt_resource_record(cf, domain, zone_id)
-    if cf_txt_resp is True:
-        print 'Deleted IPv4/6: {}/{}. Added IPv4/6: {}/{}. TXT Renewal: OK'.\
-            format(
-                cf_ipv4_delcount,
-                cf_ipv6_delcount,
-                cf_ipv4_addcount,
-                cf_ipv6_addcount,)
-        sys.exit()
-    else:
-        print 'Deleted IPv4/6: {}/{}. Added IPv4/6: {}/{}. TXT Renewal: FAIL'.\
-            format(
-                cf_ipv4_delcount,
-                cf_ipv6_delcount,
-                cf_ipv4_addcount,
-                cf_ipv6_addcount,)
-        print cf_txt_resp
-        sys.exit(1)
+        cf_ipv6_list = [x['content'] for x in cf_ipv6_records]
+        cf_ipv6_addcount = 0
+        for ipv6_probe in ipv6_probes:
+            if ipv6_probe not in cf_ipv6_list:
+                resp = cloudflare_add_resource_record(
+                    cf=cf,
+                    zone_id=zone_id,
+                    type='AAAA',
+                    domain=domain,
+                    content=ipv6_probe,
+                )
+                if resp is not True:
+                    print(resp)
+                    sys.exit(1)
+                cf_ipv6_addcount += 1
+
+        # Renew TXT record on each run, even if nothing changed.
+        cf_txt_resp = cloudflare_add_txt_resource_record(cf, domain, zone_id)
+        if cf_txt_resp is True:
+            print('Deleted IPv4/6: {}/{}. Added IPv4/6: {}/{}. \
+                  TXT Renewal: OK'.format(cf_ipv4_delcount,
+                                          cf_ipv6_delcount,
+                                          cf_ipv4_addcount,
+                                          cf_ipv6_addcount,))
+            sys.exit()
+        else:
+            print('Deleted IPv4/6: {}/{}. Added IPv4/6: {}/{}. \
+                  TXT Renewal: FAIL'.format(cf_ipv4_delcount,
+                                            cf_ipv6_delcount,
+                                            cf_ipv4_addcount,
+                                            cf_ipv6_addcount,))
+            print(cf_txt_resp)
+            sys.exit(1)
 
 
 def purge_domain(cf, domain):
@@ -375,7 +389,7 @@ def purge_domain(cf, domain):
     if e is False:
         zone_id = resp
     else:
-        print resp
+        print(resp)
         sys.exit(1)
 
     # Get all current RR's
@@ -383,7 +397,7 @@ def purge_domain(cf, domain):
     if e is False:
         cf_domain_records = resp
     else:
-        print resp
+        print(resp)
         sys.exit(1)
 
     # Remove all Records from that domain (effectly the domain itself)
@@ -395,14 +409,14 @@ def purge_domain(cf, domain):
             cf_domain_dict['id']
         )
         if resp is not True:
-            print resp
+            print(resp)
             sys.exit(1)
         cf_domain_delcount += 1
 
-    print 'Successfully deleted {} records from {}'.format(
+    print('Successfully deleted {} records from {}'.format(
         cf_domain_delcount,
         domain,
-    )
+    ))
     sys.exit()
 
 
@@ -416,7 +430,6 @@ def main(args):
         without ever have to manually add/remove them anymore. This is helpful\
         for example when using IP-Whitelisting with the Sophos UTM.\
         You now have to use a DNS Group and you\'re done.',
-        version=version()
     )
 
     exclusive_group = parser.add_mutually_exclusive_group()
@@ -456,13 +469,21 @@ def main(args):
         type=int,
         help='Enter the CRITICAL threshold in seconds.',
     )
+    parser.add_argument(
+        '-s',
+        '--service',
+        default='pingdom',
+        type=str,
+        help='Select the Monitoring Service: \
+        "pingdom" (default), "uptimerobot", "all".',
+    )
 
     args = parser.parse_args()
     if args.check_domain and validate_fqdn(args.check_domain):
         check_domain(args.check_domain, args.warning, args.critical)
     elif args.update_domain and validate_fqdn(args.update_domain):
         cf = CloudFlare.CloudFlare(raw=True)
-        update_domain(cf, args.update_domain)
+        update_domain(cf, args.update_domain, args.service)
     elif args.purge_domain and validate_fqdn(args.purge_domain):
         cf = CloudFlare.CloudFlare(raw=True)
         purge_domain(cf, args.purge_domain)

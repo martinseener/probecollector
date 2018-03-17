@@ -20,7 +20,7 @@ It will work correctly but since it only deletes old IPs from the DNS Group afte
 
 The initial v1.x release was built as a shell script and only supported deleting all records and readding the updated version afterwards. As this works, it's not quite professional and uses more API calls than necessary. Also adding a TXT record for checking the last domain update was missing, so i have rewritten Probe Collector completely in Python and added a lot functions. The Bash-Version is now considered deprecated but can be still used from the `examples` subfolder. Please check an older version of this `README.md` for Bash-Version instructions. It has formerly been called PPaaS or Pingdom Probes as a Service.
 
-For v2.x and onwards, clone this repository, install the python modules and add the Cloudflare credentials to a config file. Then run it.
+For v2.x and onwards, clone this repository, install the python modules and add the Cloudflare credentials to a config file. Then run it. Probe Collector has been tested with Python 2.7 and 3.6.
 
 ### Installation
 
