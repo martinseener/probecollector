@@ -28,7 +28,7 @@ except ImportError as e:
 __author__ = 'Martin Seener'
 __copyright__ = 'Copyright 2018, Martin Seener'
 __license__ = 'MIT'
-__version__ = '2.1.0'
+__version__ = '2.1.1'
 __maintainer__ = 'Martin Seener'
 __email__ = 'martin@sysorchestra.com'
 __status__ = 'Production'
@@ -52,6 +52,13 @@ def service_fetch_probes(service, proto):
         url = 'https://my.pingdom.com/probes/' + proto
     elif service == 'uptimerobot':
         url = 'https://uptimerobot.com/inc/files/ips/' + proto + '.txt'
+    elif service == 'statuscake' and proto == 'ipv4':
+        url = 'https://app.statuscake.com/Workfloor/Locations.php?format=txt'
+    elif service == 'statuscake' and proto == 'ipv6':
+        # Return empty iplist here as a temporary workaround
+        return [], False
+    else:
+        return 'Service or protocol not supported.', True
 
     try:
         resp = requests.get(url)
@@ -60,8 +67,8 @@ def service_fetch_probes(service, proto):
         + ' with error: {}'.format(proto,
                                    e,
                                    ), True
-    # Get back a list of IP's and filter out empty lines
-    iplist = [x for x in resp.text.split() if x != '']
+    # Get back a list of IP's and filter out empty lines and duplicates
+    iplist = [x for x in set(resp.text.split()) if x != '']
     return iplist, False
 
 
@@ -194,6 +201,7 @@ def cloudflare_add_resource_record(cf, zone_id, domain, type, content, ttl=300, 
         'ttl': ttl,
         'proxied': proxied,
     }
+
     try:
         cf.zones.dns_records.post(zone_id, data=new_rr)
     except CloudFlare.exceptions.CloudFlareAPIError as e:
@@ -254,7 +262,7 @@ def update_domain(cf, domain, service):
     the Cloudflare list with the monitoring probes list
     """
     service = service.lower()
-    if service not in ['pingdom', 'uptimerobot']:
+    if service not in ['pingdom', 'uptimerobot', 'statuscake']:
         print('The monitoring service you choose (' +
               service +
               ') is not valid.')
@@ -475,7 +483,7 @@ def main(args):
         default='pingdom',
         type=str,
         help='Select the Monitoring Service: \
-        "pingdom" (default), "uptimerobot", "all".',
+        "pingdom" (default), "uptimerobot", "statuscake".',
     )
 
     args = parser.parse_args()

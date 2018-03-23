@@ -3,18 +3,15 @@
 This tool will automate the hassle of adding or removing single monitoring probes manually from your IP-Whitelisting.
 It will do this by getting all IPv4 and IPv6 Probes and add them to a single Subdomain of your own domain. The probes are being added as separate A/AAAA Records for that subdomain instead of a single subdomain per probe.
 
-This tool currently only supports Cloudflare as the DNS provider and Pingdom as the source of the monitoring probes.
+This tool currently only supports Cloudflare as the DNS provider and Pingdom, UptimeRobot and StatusCake (IPv4) as the source for monitoring probes.
 
 ### Example
 
-In the Sophos UTM* you can either do it manually by adding single Hosts with those Probe-IP's manually or you can now add a single DNS Group which
+In the Sophos UTM* you can either do it manually by adding single Hosts with those Probe-IP's or you can now add a single DNS Group which
 points to your new subdomain. The UTM will automatically resolve to all A/AAAA Records (AAAA only when IPv6 is activated) and updates the Filterrules
 which uses this DNS Group, so an update of the Resource-Records on the Subdomain results in an automatically updated Whitelisting.
 
-> *By default the UTM will use the subdomains TTL (default 3600s) before re-resolving all RR's and updating the Rules in the Firewall. In the latest version
-of the UTM - 9.407 and later there is a bug which doesn't delete resolved IPs from the DNS Group when they have been deleted from the subdomain but will only add
-new IPs instead. The Bug was filed as NUTM-4601 for UTMs pre 9.407 and NUTM-5697 for 9.407 where the bug still exists. You can use PPaaS already with those versions.
-It will work correctly but since it only deletes old IPs from the DNS Group after the default group timeout of 7 days, your whitelisting is a bit more permissive than it should. Sophos told me that they will not fix this as it makes much more load to the DNS resolver but instead there is a way to manually change the timeout of the DNS Group.
+Starting with the newest UTM Update 9.508-10, you can also change the default TTL of one week for DNS groups to your specific needs. There was also a bug which caused DNS groups not to delete IP's that where deleted from the DNS (fixed with NUTM-8887).
 
 ## How to use
 

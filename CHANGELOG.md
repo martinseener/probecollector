@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.1.1] - 2018-03-23
+- Added support for StatusCake IPv4 probes (IPv6 needs adaptions)
+- Enhanced probe fetching by excluding duplicates from source lists
+
 ## [2.1.0] - 2018-03-17
 - Made Probe Collector compatible with Python 2 and 3. Tested with Python 2.7.10 and 3.6.4
 - Added support for UptimeRobot (Pingdom remains default for backwards-compatibility)
