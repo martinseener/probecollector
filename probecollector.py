@@ -28,7 +28,7 @@ except ImportError as e:
 __author__ = 'Martin Seener'
 __copyright__ = 'Copyright 2018, Martin Seener'
 __license__ = 'MIT'
-__version__ = '2.1.1'
+__version__ = '2.1.2'
 __maintainer__ = 'Martin Seener'
 __email__ = 'martin@sysorchestra.com'
 __status__ = 'Production'
@@ -222,7 +222,7 @@ def check_domain(domain, warning, critical):
     resp = subprocess.check_output(
         ['dig', 'TXT', domain, '+short']
     ).decode().strip().strip('"')
-    if isinstance(resp, str):
+    if type(resp) == str or type(resp) == unicode:
         try:
             resp = int(resp)
         except Exception:
