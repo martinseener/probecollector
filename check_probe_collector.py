@@ -24,7 +24,7 @@ except ImportError as e:
 __author__ = 'Martin Seener'
 __copyright__ = 'Copyright 2018, Martin Seener'
 __license__ = 'MIT'
-__version__ = '2.1.2'
+__version__ = '2.1.3'
 __maintainer__ = 'Martin Seener'
 __email__ = 'martin@sysorchestra.com'
 __status__ = 'Production'
