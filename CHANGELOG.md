@@ -2,6 +2,9 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.1.4] - 2018-12-13
+- updated urllib3 package requirements to >=1.23 due to CVE-2018-20060
+
 ## [2.1.3] - 2018-11-11
 - Updated requests package requirements to 2.20.0 due to CVE-2018-18074
 
