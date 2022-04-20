@@ -1,5 +1,7 @@
 # Probe Collector
 
+[![CodeQL](https://github.com/martinseener/probecollector/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/martinseener/probecollector/actions/workflows/codeql-analysis.yml)
+
 This tool will automate the hassle of adding or removing single monitoring probes manually from your IP-Whitelisting.
 It will do this by getting all IPv4 and IPv6 Probes and add them to a single Subdomain of your own domain. The probes are being added as separate A/AAAA Records for that subdomain instead of a single subdomain per probe.
 
