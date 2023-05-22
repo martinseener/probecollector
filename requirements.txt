@@ -4,5 +4,5 @@ cloudflare==1.8.1
 future==0.16.0
 idna==2.6
 PyYAML==5.4
-requests==2.20.0
+requests==2.31.0
 urllib3>=1.23
